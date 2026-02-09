@@ -21,12 +21,13 @@ citations.
 The system uses a shared RAG architecture:
 
 -   Structured patient lookup (simulated database)
--   PDF ingestion + embedding pipeline
+-   PDF ingestion and embedding pipeline
 -   FAISS vector store for retrieval
 -   Citation ranking
 -   LLM reasoning grounded only in retrieved evidence
 -   Shared retriever reused across endpoints
--   Lightweight in-memory conversation storage
+-   Lightweight in-memory conversation storage (per patient)
+-   Embeddings are generated during ingestion and stored in a local FAISS index for reuse at   runtime.
 
 Both `/assess` and `/chat` use the same retriever and grounding logic.
 
@@ -62,9 +63,9 @@ Request:
 
 Response includes:
 
--   category\
--   rationale\
--   recommended_action\
+-   category
+-   rationale
+-   recommended_action
 -   supporting NG12 citations
 
 ------------------------------------------------------------------------
@@ -77,28 +78,46 @@ Request:
 
 ``` json
 {
-  "session_id": "abc123",
+  "patient_id": "PT-101",
   "message": "Do I need urgent referral?"
 }
 ```
 
 Response includes:
 
--   grounded answer\
--   supporting citations\
--   session history
+-   grounded answer
+-   supporting citations
+-   conversation history
 
 ------------------------------------------------------------------------
 
 ### View Conversation History
 
-GET `/chat/{session_id}/history`
+GET `/history/{patient_id}`
 
 ------------------------------------------------------------------------
 
 ### Clear Conversation History
 
-DELETE `/chat/{session_id}`
+DELETE `/history/{patient_id}`
+
+------------------------------------------------------------------------
+
+## Minimal Web UI
+
+After starting the server:
+
+http://127.0.0.1:8000/
+
+Provides a simple interface to:
+
+-   Run assessment
+-   Ask follow-up chat questions
+-   View citation-grounded responses
+
+Swagger documentation:
+
+http://127.0.0.1:8000/docs
 
 ------------------------------------------------------------------------
 
@@ -129,14 +148,14 @@ DELETE `/chat/{session_id}`
 
 ### Shared RAG Pipeline
 
-Both endpoints use:
+Both endpoints reuse:
 
 -   Same retriever
 -   Same citation ranking logic
 -   Same grounding rules
 -   Same vector store
 
-This ensures no re-embedding and consistent reasoning.
+This ensures consistent reasoning and avoids re-embedding.
 
 ### Grounded Generation
 
@@ -196,7 +215,7 @@ Create a `.env` file:
     NG12_TOP_K=10
     NG12_CHAT_TOP_CITATIONS=3
 
-Do NOT commit credentials.
+Do not commit credentials.
 
 ------------------------------------------------------------------------
 
@@ -216,8 +235,7 @@ Ensure Vertex AI API is enabled.
 uvicorn app.main:app --reload
 ```
 
-Server: http://127.0.0.1:8000
-
+Server: http://127.0.0.1:8000\
 Swagger: http://127.0.0.1:8000/docs
 
 ------------------------------------------------------------------------
@@ -232,24 +250,22 @@ Run container:
 
     docker run --rm -p 8000:8000 --env-file .env ng12-assessor
 
-Open: http://127.0.0.1:8000/docs
-
 ------------------------------------------------------------------------
 
 ## Alignment with Take-Home Requirements
 
--   FastAPI service ✔
--   Dockerized configuration ✔
--   Structured tool retrieval ✔
--   Shared RAG pipeline across `/assess` and `/chat` ✔
--   Citation-grounded responses ✔
--   Multi-turn conversation memory ✔
--   Prompt strategy documentation (PROMPTS.md, CHAT_PROMPTS.md) ✔
+-   FastAPI service
+-   Dockerized configuration
+-   Structured tool retrieval
+-   Shared RAG pipeline across `/assess` and `/chat`
+-   Citation-grounded responses
+-   Multi-turn conversation memory
+-   Prompt strategy documentation (PROMPTS.md, CHAT_PROMPTS.md)
 
 ------------------------------------------------------------------------
 
 ## Model Note
 
 The brief referenced Gemini 1.5.\
-This implementation uses the currently supported Vertex Gemini model\
+This implementation uses the currently supported Vertex Gemini model
 (configurable via `NG12_MODEL`) due to model lifecycle updates.

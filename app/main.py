@@ -6,6 +6,15 @@ import traceback
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Optional but recommended: auto-load .env for local runs/reviewers
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 from app.models import AssessRequest, AssessResponse, ChatRequest, ChatResponse, HistoryResponse
 from app.tools.patient_lookup import get_patient
@@ -14,6 +23,16 @@ from app.agents.chat_agent import answer_question
 from app.memory.session_store import add_message, get_history, clear as clear_history
 
 app = FastAPI(title="NG12 Cancer Risk Assessor", version="1.0")
+
+# -----------------------------
+# UI (minimal frontend)
+# -----------------------------
+# Serves UI at /ui and makes / open ui/index.html
+app.mount("/ui", StaticFiles(directory="ui"), name="ui")
+
+@app.get("/")
+def root():
+    return FileResponse("ui/index.html")
 
 
 @app.get("/health")

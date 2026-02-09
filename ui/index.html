@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NG12 Risk Assessor</title>
+</head>
+<body>
+  <h2>Assessment</h2>
+  <input id="patientId" placeholder="Patient ID" />
+  <button onclick="assess()">Assess</button>
+  <pre id="assessResult"></pre>
+
+  <h2>Chat</h2>
+  <input id="chatMessage" placeholder="Message" />
+  <button onclick="chat()">Send</button>
+  <pre id="chatResult"></pre>
+
+  <script>
+    async function assess() {
+      const id = document.getElementById("patientId").value;
+      const res = await fetch("/assess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: id })
+      });
+      document.getElementById("assessResult").innerText =
+        JSON.stringify(await res.json(), null, 2);
+    }
+
+    async function chat() {
+      const id = document.getElementById("patientId").value;
+      const message = document.getElementById("chatMessage").value;
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patient_id: id, message })
+      });
+      document.getElementById("chatResult").innerText =
+        JSON.stringify(await res.json(), null, 2);
+    }
+  </script>
+</body>
+</html>
