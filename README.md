@@ -1,7 +1,9 @@
-# NG12 Cancer Risk Assessor -- Reasoning Agent
+# NG12 Cancer Risk Assessor --- Reasoning Agent
 
-This project implements a grounded clinical reasoning agent based on
-NICE NG12 guidelines.
+## Overview
+
+This project implements a grounded clinical reasoning agent based on the
+NICE NG12 cancer referral guidelines.
 
 It combines structured patient data with unstructured clinical guidance
 using a shared Retrieval-Augmented Generation (RAG) pipeline across:
@@ -9,29 +11,30 @@ using a shared Retrieval-Augmented Generation (RAG) pipeline across:
 -   Clinical decision support workflow (`/assess`)
 -   Conversational chat interface (`/chat`)
 
-All outputs are strictly grounded in retrieved NG12 excerpts.
+All outputs are strictly grounded in retrieved NG12 excerpts and include
+citations.
 
 ------------------------------------------------------------------------
 
-# System Overview
+## System Overview
 
 The system uses a shared RAG architecture:
 
--   Structured patient lookup
--   FAISS vector retrieval over NG12 chunks
+-   Structured patient lookup (simulated database)
+-   PDF ingestion + embedding pipeline
+-   FAISS vector store for retrieval
 -   Citation ranking
--   LLM reasoning grounded in retrieved evidence
+-   LLM reasoning grounded only in retrieved evidence
 -   Shared retriever reused across endpoints
 -   Lightweight in-memory conversation storage
 
-Both `/assess` and `/chat` use the same retriever and citation ranking
-logic.
+Both `/assess` and `/chat` use the same retriever and grounding logic.
 
 ------------------------------------------------------------------------
 
-# API Endpoints
+## API Endpoints
 
-## Health Check
+### Health Check
 
 GET `/health`
 
@@ -45,7 +48,7 @@ Returns:
 
 ------------------------------------------------------------------------
 
-## Clinical Assessment
+### Clinical Assessment
 
 POST `/assess`
 
@@ -66,7 +69,7 @@ Response includes:
 
 ------------------------------------------------------------------------
 
-## Conversational Interface
+### Conversational Interface
 
 POST `/chat`
 
@@ -74,7 +77,7 @@ Request:
 
 ``` json
 {
-  "patient_id": "PT-101",
+  "session_id": "abc123",
   "message": "Do I need urgent referral?"
 }
 ```
@@ -83,23 +86,23 @@ Response includes:
 
 -   grounded answer\
 -   supporting citations\
--   full conversation history
+-   session history
 
 ------------------------------------------------------------------------
 
-## View Conversation History
+### View Conversation History
 
-GET `/history/{patient_id}`
-
-------------------------------------------------------------------------
-
-## Clear Conversation History
-
-DELETE `/history/{patient_id}`
+GET `/chat/{session_id}/history`
 
 ------------------------------------------------------------------------
 
-# Architecture
+### Clear Conversation History
+
+DELETE `/chat/{session_id}`
+
+------------------------------------------------------------------------
+
+## Architecture
 
     app/
       agents/
@@ -108,6 +111,7 @@ DELETE `/history/{patient_id}`
       rag/
         retriever.py
         vector_store.py
+        ingest_pdf.py
       tools/
         patient_lookup.py
       memory/
@@ -115,62 +119,76 @@ DELETE `/history/{patient_id}`
       main.py
 
     data/
-      ng12.index
-      ng12_meta.json
+      ng12.pdf
+      index/
+        faiss.index
 
 ------------------------------------------------------------------------
 
-# Design Decisions
+## Design Decisions
 
-## Shared RAG Pipeline
+### Shared RAG Pipeline
 
 Both endpoints use:
 
--   Same retriever\
--   Same citation ranking logic\
+-   Same retriever
+-   Same citation ranking logic
 -   Same grounding rules
+-   Same vector store
 
-## Grounded Generation
+This ensures no re-embedding and consistent reasoning.
+
+### Grounded Generation
 
 The LLM:
 
--   Uses only retrieved NG12 excerpts\
--   Returns JSON only\
--   Avoids hallucinated thresholds or cancers\
--   Returns fallback message if unsupported
+-   Uses only retrieved NG12 excerpts
+-   Avoids hallucinated thresholds or unsupported claims
+-   Returns structured JSON responses
+-   Falls back safely when insufficient evidence is retrieved
 
-Fallback:
+Fallback message:
 
-"I can't find that in the provided NG12 excerpts."
+"I couldn't find support in the NG12 text for that."
 
 ------------------------------------------------------------------------
 
 ## Installation
 
-```bash
+Clone the repository:
+
+``` bash
 git clone https://github.com/aarthijujjavarapu31-art/ng12-cancer-risk-assessor.git
 cd ng12-cancer-risk-assessor
-python3 -m venv .venv
-pip install -r requirements.txt
-## Create Virtual Environment
+```
+
+Create virtual environment:
+
+``` bash
+python -m venv .venv
+```
+
+Activate environment:
 
 Windows:
 
-    python -m venv .venv
     .venv\Scripts\activate
 
 Mac/Linux:
 
-    python3 -m venv .venv
     source .venv/bin/activate
 
-## Install Dependencies
+Install dependencies:
 
-    pip install -r requirements.txt
+``` bash
+pip install -r requirements.txt
+```
 
-## Configure Environment Variables
+------------------------------------------------------------------------
 
-Create `.env` from `.env.example`:
+## Environment Variables
+
+Create a `.env` file:
 
     GOOGLE_CLOUD_PROJECT=your-project-id
     GOOGLE_CLOUD_LOCATION=us-central1
@@ -178,7 +196,7 @@ Create `.env` from `.env.example`:
     NG12_TOP_K=10
     NG12_CHAT_TOP_CITATIONS=3
 
-Do NOT commit real credentials.
+Do NOT commit credentials.
 
 ------------------------------------------------------------------------
 
@@ -188,28 +206,50 @@ Do NOT commit real credentials.
     gcloud config set project your-project-id
     gcloud auth application-default set-quota-project your-project-id
 
-Ensure Vertex AI API enabled:
-
-    gcloud services list --enabled | findstr aiplatform
+Ensure Vertex AI API is enabled.
 
 ------------------------------------------------------------------------
 
-# Running the Server
+## Run Locally
 
-    uvicorn app.main:app --reload
+``` bash
+uvicorn app.main:app --reload
+```
 
-Server:
+Server: http://127.0.0.1:8000
 
-http://127.0.0.1:8000
+Swagger: http://127.0.0.1:8000/docs
 
-Swagger:
+------------------------------------------------------------------------
 
-http://127.0.0.1:8000/docs
+## Run with Docker
 
+Build image:
 
-# Future Improvements
+    docker build -t ng12-assessor .
 
--   Persist memory using Redis\
--   Add automated evaluation tests\
--   Add Docker support\
--   Improve retriever scoring
+Run container:
+
+    docker run --rm -p 8000:8000 --env-file .env ng12-assessor
+
+Open: http://127.0.0.1:8000/docs
+
+------------------------------------------------------------------------
+
+## Alignment with Take-Home Requirements
+
+-   FastAPI service ✔
+-   Dockerized configuration ✔
+-   Structured tool retrieval ✔
+-   Shared RAG pipeline across `/assess` and `/chat` ✔
+-   Citation-grounded responses ✔
+-   Multi-turn conversation memory ✔
+-   Prompt strategy documentation (PROMPTS.md, CHAT_PROMPTS.md) ✔
+
+------------------------------------------------------------------------
+
+## Model Note
+
+The brief referenced Gemini 1.5.\
+This implementation uses the currently supported Vertex Gemini model\
+(configurable via `NG12_MODEL`) due to model lifecycle updates.
