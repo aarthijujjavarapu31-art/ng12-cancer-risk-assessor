@@ -27,6 +27,13 @@ The system uses a shared RAG architecture:
 Both `/assess` and `/chat` use the same retriever and citation ranking
 logic.
 
+## Installation
+
+```bash
+git clone https://github.com/aarthijujjavarapu31-art/ng12-cancer-risk-assessor.git
+cd ng12-cancer-risk-assessor
+python3 -m venv .venv
+pip install -r requirements.txt
 ------------------------------------------------------------------------
 
 # API Endpoints
