@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+pdfplumber
+numpy
+faiss-cpu
+google-cloud-aiplatform
+pytest
+httpx
